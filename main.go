@@ -40,7 +40,7 @@ func main() {
 	rootCa := ca.CreateCa(*caSubj, time.Now(), yearDuration)
 
 	// Gen server csr
-	srvCsr := csr.CreateCSR(*srvCertSubj, []string{"sundae.com", "auth.sundae.com", "localhost"}, []net.IP{net.IPv4(127, 0, 0, 1)}, time.Now(), yearDuration)
+	srvCsr := csr.CreateCSR(*srvCertSubj, []string{"sundae.com", "auth.sundae.com", "localhost"}, []net.IP{net.IPv4(127, 0, 0, 1), net.IPv4(192, 168, 1, 61)}, time.Now(), yearDuration)
 	srvCert := ca.Sign(rootCa, srvCsr)
 
 	// Gen web cli csr
