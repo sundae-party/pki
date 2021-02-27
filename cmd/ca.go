@@ -28,12 +28,6 @@ import (
 	"github.com/sundae-party/pki/ca"
 )
 
-var dest string
-var caCertFileName string
-var caKeyFileName string
-var cn string
-var timeExp int
-
 // caCmd represents the ca command
 var caCmd = &cobra.Command{
 	Use:   "ca",
@@ -41,9 +35,19 @@ var caCmd = &cobra.Command{
 	Long:  `Create new self signed CA.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
+		cn, err := cmd.Flags().GetString("dest")
+		if err != nil {
+			return err
+		}
+
 		// Buil CA with given CN
 		caSubj := &pkix.Name{
 			CommonName: cn,
+		}
+
+		timeExp, err := cmd.Flags().GetInt("exp")
+		if err != nil {
+			return err
 		}
 
 		// Set the cert validity
@@ -57,14 +61,27 @@ var caCmd = &cobra.Command{
 		rootCa := ca.CreateCa(*caSubj, time.Now(), yearDuration)
 
 		// Create ssl folder
+		dest, err := cmd.Flags().GetString("dest")
+		if err != nil {
+			return err
+		}
+
 		err = os.Mkdir(dest, 0700)
 		if err != nil {
 			return err
 		}
 
 		// Build cert & key dest path
-		certPath := fmt.Sprintf("%s/%s", dest, caCertFileName)
-		keyPath := fmt.Sprintf("%s/%s", dest, caKeyFileName)
+		certFileName, err := cmd.Flags().GetString("certName")
+		if err != nil {
+			return err
+		}
+		keyFileName, err := cmd.Flags().GetString("keyName")
+		if err != nil {
+			return err
+		}
+		certPath := fmt.Sprintf("%s/%s", dest, certFileName)
+		keyPath := fmt.Sprintf("%s/%s", dest, keyFileName)
 
 		// Write CA cert files
 		err = ioutil.WriteFile(certPath, rootCa.CertPem.Bytes(), 0600)
@@ -88,14 +105,14 @@ func init() {
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	caCmd.Flags().StringVarP(&dest, "dest", "d", "ssl", "Destination where CA cert and key files will be created. (default is ./ssl)")
+	caCmd.Flags().StringP("dest", "d", "ssl", "Destination where CA cert and key files will be created. (default is ./ssl)")
 
-	caCmd.Flags().StringVar(&cn, "cn", "", "Common Name to add in the CA.")
+	caCmd.Flags().String("cn", "", "Common Name to add in the CA.")
 	caCmd.MarkFlagRequired("cn")
 
-	caCmd.Flags().StringVar(&caCertFileName, "certName", "ca.pem", "CA cert file name. (default is ca.pem)")
-	caCmd.Flags().StringVar(&caKeyFileName, "keyName", "ca.key", "CA key file name. (default is ca.key)")
-	caCmd.Flags().IntVar(&timeExp, "exp", 87600, "Time when the cert will expire from now. (default is 87600h - 10 years)")
+	caCmd.Flags().String("certName", "ca.pem", "CA cert file name. (default is ca.pem)")
+	caCmd.Flags().String("keyName", "ca.key", "CA key file name. (default is ca.key)")
+	caCmd.Flags().Int("exp", 87600, "Time when the cert will expire from now. (default is 87600h - 10 years)")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:

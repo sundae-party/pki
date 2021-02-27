@@ -23,20 +23,29 @@ import (
 	"github.com/sundae-party/pki/utils"
 )
 
-var certPath string
-var keyPath string
-
 // readCmd represents the read command
 var readCmd = &cobra.Command{
 	Use:   "read",
 	Short: "Show info about a cert",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cert, err := utils.LoadCertFromFile(keyPath, "", certPath)
+
+		// Build cert path and key path
+		certFilePath, err := cmd.Flags().GetString("cert")
 		if err != nil {
 			return err
 		}
+		keyFilePath, err := cmd.Flags().GetString("key")
+		if err != nil {
+			return err
+		}
+		cert, err := utils.LoadCertFromFile(keyFilePath, "", certFilePath)
+		if err != nil {
+			return err
+		}
+
 		log.Printf("DNS Names : %s \n", cert.Cert.DNSNames)
+		log.Printf("Ip : %s", cert.Cert.IPAddresses)
 		log.Printf("Is CA : %t \n", cert.Cert.IsCA)
 		log.Printf("Not Before : %s", cert.Cert.NotBefore)
 		log.Printf("NotAfter : %s", cert.Cert.NotAfter)
@@ -59,9 +68,9 @@ func init() {
 	// is called directly, e.g.:
 	// readCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
-	readCmd.Flags().StringVarP(&keyPath, "key", "k", "", "Key path.")
+	readCmd.Flags().StringP("key", "k", "", "Key path.")
 	readCmd.MarkFlagRequired("key")
 
-	readCmd.Flags().StringVarP(&certPath, "cert", "c", "", "Cert path.")
+	readCmd.Flags().StringP("cert", "c", "", "Cert path.")
 	readCmd.MarkFlagRequired("cert")
 }
