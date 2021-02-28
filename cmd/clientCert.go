@@ -17,8 +17,12 @@ package cmd
 
 import (
 	"fmt"
+	"log"
+	"net"
+	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/sundae-party/pki/utils"
 )
 
 // clientCertCmd represents the clientCert command
@@ -26,21 +30,77 @@ var clientCertCmd = &cobra.Command{
 	Use:   "clientCert",
 	Short: "Manage client certificate",
 	Long:  `Create a new client cert signed by a CA in order to be used with the mTLS authentication`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("clientCert called")
+	RunE: func(cmd *cobra.Command, args []string) error {
+
+		// Get CA info from flags
+		caKeyPath, err := cmd.Flags().GetString("caKey")
+		if err != nil {
+			return err
+		}
+		caCertPath, err := cmd.Flags().GetString("caCert")
+		if err != nil {
+			return err
+		}
+
+		// Get CN from flag
+		cn, err := cmd.Flags().GetString("certCn")
+		if err != nil {
+			return err
+		}
+
+		// Build the cert validity from flags
+		durationString, err := cmd.Flags().GetInt("exp")
+		if err != nil {
+			return err
+		}
+		formatedDurationString := fmt.Sprintf("%dh", durationString)
+		duration, err := time.ParseDuration(formatedDurationString)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		// Get destination folder
+		dest, err := cmd.Flags().GetString("dest")
+		if err != nil {
+			return err
+		}
+
+		// Get files name from flags
+		certFileName, err := cmd.Flags().GetString("certFileName")
+		if err != nil {
+			return err
+		}
+		keyFileName, err := cmd.Flags().GetString("keyFileName")
+		if err != nil {
+			return err
+		}
+
+		return utils.CreateCertFromCAFile(caKeyPath, caCertPath, cn, duration, []string{}, []net.IP{}, dest, certFileName, keyFileName)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(clientCertCmd)
 
-	// Here you will define your flags and configuration settings.
+	// CA key to signe cert
+	clientCertCmd.Flags().String("caKey", "", "CA Key path used to sign the new certificate.")
+	clientCertCmd.MarkFlagRequired("caKey")
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	clientCertCmd.PersistentFlags().String("ca", "", "A help for foo")
+	// CA cert to signe cert
+	clientCertCmd.Flags().String("caCert", "", "CA Cert path used to sign the new certificate.")
+	clientCertCmd.MarkFlagRequired("caCert")
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// clientCertCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// CN
+	clientCertCmd.Flags().String("certCn", "", "Common Name to add in the new cert.")
+	clientCertCmd.MarkFlagRequired("certCn")
+
+	// Destination
+	clientCertCmd.Flags().StringP("dest", "d", "ssl", "Destination where the cert and key files will be created. (default is ./ssl)")
+
+	// Files name
+	clientCertCmd.Flags().String("certFileName", "client.pem", "The cert file name. (default is srv.pem)")
+	clientCertCmd.Flags().String("keyFileName", "client.key", "The key file name. (default is srv.key)")
+
+	// Duration
+	clientCertCmd.Flags().Int("exp", 87600, "Time when the cert will expire from now. (default is 87600h - 10 years)")
 }

@@ -16,17 +16,12 @@ limitations under the License.
 package cmd
 
 import (
-	"crypto/x509/pkix"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/sundae-party/pki/ca"
-	"github.com/sundae-party/pki/csr"
 	"github.com/sundae-party/pki/utils"
 )
 
@@ -37,6 +32,7 @@ var serverCertCmd = &cobra.Command{
 	Long:  `Create a new certificate and key signed by a given CA. This certificate should be used to the server SSL configuration.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
+		// Get CA info from flags
 		caKeyPath, err := cmd.Flags().GetString("caKey")
 		if err != nil {
 			return err
@@ -46,22 +42,13 @@ var serverCertCmd = &cobra.Command{
 			return err
 		}
 
-		// Load CA
-		caCert, err := utils.LoadCertFromFile(caKeyPath, "", caCertPath)
-		if err != nil {
-			return err
-		}
-
-		// Build new cert subject with CN
+		// Get CN from flag
 		cn, err := cmd.Flags().GetString("certCn")
 		if err != nil {
 			return err
 		}
-		certSubj := &pkix.Name{
-			CommonName: cn,
-		}
 
-		// Build the cert validity
+		// Build the cert validity from flags
 		durationString, err := cmd.Flags().GetInt("exp")
 		if err != nil {
 			return err
@@ -72,6 +59,23 @@ var serverCertCmd = &cobra.Command{
 			log.Fatalln(err)
 		}
 
+		// Get destination folder
+		dest, err := cmd.Flags().GetString("dest")
+		if err != nil {
+			return err
+		}
+
+		// Get files name from flags
+		certFileName, err := cmd.Flags().GetString("certFileName")
+		if err != nil {
+			return err
+		}
+		keyFileName, err := cmd.Flags().GetString("keyFileName")
+		if err != nil {
+			return err
+		}
+
+		// Get sans from flags
 		sansDns, err := cmd.Flags().GetStringSlice("sansDns")
 		if err != nil {
 			return err
@@ -81,48 +85,7 @@ var serverCertCmd = &cobra.Command{
 			return err
 		}
 
-		// Create CSR
-		csrSrv := csr.CreateCSR(*certSubj, sansDns, sansIp, time.Now(), duration)
-		// Sign CSR with given CA
-		cert := ca.Sign(caCert, csrSrv)
-
-		// Build destination files
-		dest, err := cmd.Flags().GetString("dest")
-		if err != nil {
-			return err
-		}
-
-		// Create destination folder
-		if _, err := os.Stat(dest); os.IsNotExist(err) {
-			err := os.Mkdir(dest, 0700)
-			if err != nil {
-				return err
-			}
-		}
-
-		// Build cert path and key path
-		certFileName, err := cmd.Flags().GetString("certFileName")
-		if err != nil {
-			return err
-		}
-		keyFileName, err := cmd.Flags().GetString("keyFileName")
-		if err != nil {
-			return err
-		}
-		certPath := fmt.Sprintf("%s/%s", dest, certFileName)
-		keyPath := fmt.Sprintf("%s/%s", dest, keyFileName)
-
-		// Write Cert and Key files
-		err = ioutil.WriteFile(certPath, cert.CertPem.Bytes(), 0600)
-		if err != nil {
-			return err
-		}
-		err = ioutil.WriteFile(keyPath, cert.KeyPem.Bytes(), 0600)
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return utils.CreateCertFromCAFile(caKeyPath, caCertPath, cn, duration, sansDns, sansIp, dest, certFileName, keyFileName)
 	},
 }
 

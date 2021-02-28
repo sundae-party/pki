@@ -66,9 +66,12 @@ var caCmd = &cobra.Command{
 			return err
 		}
 
-		err = os.Mkdir(dest, 0700)
-		if err != nil {
-			return err
+		// Create destination folder
+		if _, err := os.Stat(dest); os.IsNotExist(err) {
+			err := os.Mkdir(dest, 0700)
+			if err != nil {
+				return err
+			}
 		}
 
 		// Build cert & key dest path
