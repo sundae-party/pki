@@ -1,2 +1,4 @@
 ssl
 pki
+pki_linux-amd64
+pki_darwin-amd64
