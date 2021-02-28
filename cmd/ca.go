@@ -35,7 +35,7 @@ var caCmd = &cobra.Command{
 	Long:  `Create new self signed CA.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		cn, err := cmd.Flags().GetString("dest")
+		cn, err := cmd.Flags().GetString("cn")
 		if err != nil {
 			return err
 		}
